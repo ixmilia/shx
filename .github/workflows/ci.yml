@@ -2,30 +2,24 @@ name: CI
 
 on: [push, pull_request]
 
+env:
+  DOTNET_SDK_VERSION: '5.0.200'
+
 jobs:
 
-  linux:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        configuration: ['Debug', 'Release']
-    steps:
-    - uses: actions/checkout@v1
-    - uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: '3.1.100'
-    - name: Build and test
-      run: ./build-and-test.sh --configuration ${{ matrix.configuration }}
-
-  windows:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        configuration: ['Debug', 'Release']
-    steps:
-    - uses: actions/checkout@v1
-    - uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: '3.1.100'
-    - name: Build and test
-      run: .\build-and-test.cmd -c ${{ matrix.configuration }}
+  build:
+  runs-on: ${{ matrix.os }}
+  strategy:
+    matrix:
+      os: [ubuntu-latest, windows-latest]
+      configuration: [Debug, Release]
+  steps:
+  - uses: actions/checkout@v1
+  - uses: actions/setup-dotnet@v1
+    with:
+      dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+  - name: Build and test
+    shell: pwsh
+    run: |
+      $shellExt = if ($IsWindows) { "cmd" } else { "sh" }
+      & ./build-and-test.$shellExt --configuration ${{ matrix.configuration }}

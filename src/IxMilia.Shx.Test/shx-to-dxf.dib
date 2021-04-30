@@ -1,0 +1,47 @@
+#!csharp
+
+#r "..\..\artifacts\bin\IxMilia.Shx\Debug\netstandard1.3\IxMilia.Shx.dll"
+
+#!csharp
+
+#r "nuget:IxMilia.Dxf"
+
+#!csharp
+
+using IxMilia.Dxf;
+using IxMilia.Dxf.Entities;
+using IxMilia.Shx;
+
+#!csharp
+
+var shxPath = @"TODO: set me";
+var dxfPath = @"TODO: set me";
+
+#!csharp
+
+var basePoint = DxfPoint.Origin;
+var shx = ShxFont.Load(shxPath);
+var dxf = new DxfFile();
+foreach (var kvp in shx.Glyphs)
+{
+    var glyph = kvp.Value;
+    foreach (var path in glyph.Paths)
+    {
+        switch (path)
+        {
+            case ShxLine line:
+                var p1 = new DxfPoint(line.P1.X, line.P1.Y, 0.0);
+                var p2 = new DxfPoint(line.P2.X, line.P2.Y, 0.0);
+                dxf.Entities.Add(new DxfLine(p1 + basePoint, p2 + basePoint));
+                break;
+            case ShxArc arc:
+                var center = new DxfPoint(arc.Center.X, arc.Center.Y, 0.0);
+                dxf.Entities.Add(new DxfArc(center + basePoint, arc.Radius, arc.StartAngle * 180.0 / Math.PI, arc.EndAngle * 180.0 / Math.PI));
+                break;
+        }
+    }
+
+    basePoint += new DxfVector(glyph.Width, 0.0, 0.0);
+}
+
+dxf.Save(dxfPath);

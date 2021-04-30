@@ -1,0 +1,53 @@
+#!csharp
+
+#r "..\..\artifacts\bin\IxMilia.Shx\Debug\netstandard1.3\IxMilia.Shx.dll"
+
+#!csharp
+
+using System.IO;
+using System.Xml.Linq;
+using IxMilia.Shx;
+
+#!csharp
+
+var shxPath = @"TODO: set me";
+var svgPath = @"TODO: set me";
+
+#!csharp
+
+public static XElement AsXElement(this ShxGlyphPath path)
+{
+    switch (path)
+    {
+        case ShxLine line:
+            return new XElement("line",
+                new XAttribute("x1", line.P1.X),
+                new XAttribute("y1", line.P1.Y),
+                new XAttribute("x2", line.P2.X),
+                new XAttribute("y2", line.P2.Y));
+        case ShxArc arc:
+            return null;
+        default:
+            throw new NotSupportedException($"Unexpected path '{path?.GetType().Name}'");
+    }
+}
+
+#!csharp
+
+var shx = ShxFont.Load(shxPath);
+var viewBoxExtra = 0.05;
+var html = new XElement("html",
+    shx.Glyphs.Select(kvp =>
+        new XElement("div",
+            new XElement("div", kvp.Key),
+            new XElement("svg",
+                new XAttribute("width", "100px"),
+                new XAttribute("height", "75px"),
+                new XAttribute("viewBox", $"-{kvp.Value.Width * viewBoxExtra} -{kvp.Value.Height * (1.0 + viewBoxExtra)} {kvp.Value.Width * (1.0 + viewBoxExtra + viewBoxExtra)} {kvp.Value.Height * (1.0 + viewBoxExtra + viewBoxExtra)}"),
+                new XElement("g",
+                    new XAttribute("stroke", "black"),
+                    new XAttribute("stroke-width", "0.125"),
+                    new XAttribute("transform", "scale(1.0 -1.0)"),
+                    kvp.Value.Paths.Select(p => p.AsXElement())
+    )))));
+File.WriteAllText(svgPath, html.ToString());

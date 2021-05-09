@@ -38,11 +38,11 @@ namespace IxMilia.Shx
             Height = height;
         }
 
-        internal static List<ShxGlyphCommand> ParseCommands(byte[] bytes, ShxFontEncoding fontEncoding)
+        internal static List<ShxGlyphCommand> ParseCommands(ByteReader reader, ShxFontEncoding fontEncoding)
         {
             var commands = new List<ShxGlyphCommand>();
-            var reader = new ByteReader(bytes);
-            while (reader.TryReadByte(out var command))
+            var stillReading = true;
+            while (stillReading && reader.TryReadByte(out var command))
             {
                 var isBareCommand = (command & 0xF0) == 0;
                 if (isBareCommand)
@@ -85,7 +85,7 @@ namespace IxMilia.Shx
                                 // replay the given character code
                                 if (fontEncoding == ShxFontEncoding.Unicode)
                                 {
-                                    if (reader.TryReadUInt16(out var replayCode))
+                                    if (reader.TryReadUInt16BigEndian(out var replayCode))
                                     {
                                         commands.Add(new ShxGlyphCommandReplayCharacter(replayCode));
                                     }
@@ -187,6 +187,9 @@ namespace IxMilia.Shx
                             break;
                         case 0xF:
                             // TODO: unknown/unsupported
+                            break;
+                        case 0:
+                            stillReading = false;
                             break;
                         default:
                             break;

@@ -41,7 +41,7 @@ foreach (var kvp in shx.Glyphs)
         }
     }
 
-    basePoint += new DxfVector(glyph.Width, 0.0, 0.0);
+    basePoint += new DxfVector(glyph.Width * 1.1, 0.0, 0.0);
 }
 
 dxf.Save(dxfPath);

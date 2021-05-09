@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 
 namespace IxMilia.Shx
@@ -35,7 +36,7 @@ namespace IxMilia.Shx
         public double LowerCaseBaselineDropOffset { get; private set; }
         public ShxFontMode FontMode { get; private set; }
         public ShxFontEncoding FontEncoding { get; private set; }
-        public ShxFontEmbeddingType EmbeddintType { get; private set; }
+        public ShxFontEmbeddingType EmbeddingType { get; private set; }
 
         private void AddGlyph(char code, ShxGlyph glyph) => _glyphs.Add(code, glyph);
 
@@ -53,50 +54,61 @@ namespace IxMilia.Shx
 
         public static ShxFont Load(Stream stream)
         {
+            var buffer = new byte[stream.Length];
+            stream.Read(buffer, 0, buffer.Length);
+            return Load(buffer);
+        }
+
+        public static ShxFont Load(byte[] data)
+        {
             var font = new ShxFont();
             var names = new Dictionary<ushort, string>();
             var commands = new Dictionary<ushort, IEnumerable<ShxGlyphCommand>>();
-            using (var reader = new BinaryReader(stream))
+            var reader = new ByteReader(data);
+            font.FileIdentifier = reader.ReadLine();
+            if (reader.TryReadByte(out var _) && // always 26 (0x1A)?
+                reader.TryReadUInt16LittleEndian(out var characterCount))
             {
-                font.FileIdentifier = reader.ReadLine();
-                var _ = reader.ReadByte(); // always 26 (0x1A)?
-                var characterCount = reader.ReadUInt16LittleEndian();
                 for (int i = 0; i < characterCount; i++)
                 {
-                    var characterCode = reader.ReadUInt16LittleEndian();
-                    var characterByteCount = reader.ReadUInt16LittleEndian();
-                    var startPos = reader.BaseStream.Position;
-                    var expectedEnd = startPos + characterByteCount;
-                    if (characterCode == 0)
+                    if (reader.TryReadUInt16LittleEndian(out var characterCode) &&
+                        reader.TryReadUInt16LittleEndian(out var characterByteCount))
                     {
-                        font.Name = reader.ReadNullTerminatedString();
-                        font.UpperCaseBaselineOffset = reader.ReadByte();
-                        font.LowerCaseBaselineDropOffset = reader.ReadByte();
-                        font.FontMode = (ShxFontMode)reader.ReadByte();
-                        font.FontEncoding = (ShxFontEncoding)reader.ReadByte();
-                        font.EmbeddintType = (ShxFontEmbeddingType)reader.ReadByte();
-                        var unknown = reader.ReadByte();
-                    }
-                    else
-                    {
-                        var character = (char)characterCode;
-                        var glyphName = reader.ReadNullTerminatedString();
-                        if (string.IsNullOrEmpty(glyphName))
+                        var startPos = reader.Offset;
+                        var expectedEnd = startPos + characterByteCount;
+                        if (characterCode == 0)
                         {
-                            glyphName = character.ToString();
+                            font.Name = reader.ReadNullTerminatedString();
+                            if (reader.TryReadByte(out var upperCaseBaselineOffset) &&
+                                reader.TryReadByte(out var lowerCaseBaselineOffset) &&
+                                reader.TryReadByte(out var fontMode) &&
+                                reader.TryReadByte(out var fontEncoding) &&
+                                reader.TryReadByte(out var embeddingType) &&
+                                reader.TryReadByte(out var unknown))
+                            {
+                                font.UpperCaseBaselineOffset = upperCaseBaselineOffset;
+                                font.LowerCaseBaselineDropOffset = lowerCaseBaselineOffset;
+                                font.FontMode = (ShxFontMode)fontMode;
+                                font.FontEncoding = (ShxFontEncoding)fontEncoding;
+                                font.EmbeddingType = (ShxFontEmbeddingType)embeddingType;
+                            }
+                        }
+                        else
+                        {
+                            var character = (char)characterCode;
+                            var glyphName = reader.ReadNullTerminatedString();
+                            if (string.IsNullOrEmpty(glyphName))
+                            {
+                                glyphName = character.ToString();
+                            }
+
+                            var glyphCommands = ShxGlyph.ParseCommands(reader, font.FontEncoding);
+                            commands.Add(characterCode, glyphCommands);
+                            names.Add(character, glyphName);
                         }
 
-                        var glyphData = reader.ReadBytesUntilNull();
-                        var glyphCommands = ShxGlyph.ParseCommands(glyphData, font.FontEncoding);
-                        commands.Add(characterCode, glyphCommands);
-                        names.Add(character, glyphName);
-                    }
-
-                    var remainingBytes = Math.Max(0, expectedEnd - reader.BaseStream.Position);
-                    var unused = reader.ReadBytes((int)remainingBytes);
-                    if (remainingBytes > 0)
-                    {
-
+                        var remainingBytes = Math.Max(0, expectedEnd - reader.Offset);
+                        Debug.Assert(remainingBytes == 0);
                     }
                 }
             }

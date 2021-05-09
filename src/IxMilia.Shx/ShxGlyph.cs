@@ -41,10 +41,11 @@ namespace IxMilia.Shx
         internal static List<ShxGlyphCommand> ParseCommands(ByteReader reader, ShxFontEncoding fontEncoding)
         {
             var commands = new List<ShxGlyphCommand>();
-            var stillReading = true;
-            while (stillReading && reader.TryReadByte(out var command))
+            while (reader.TryReadByte(out var command) && command != 0)
             {
-                var isBareCommand = (command & 0xF0) == 0;
+                var distance = (command & 0xF0) >> 4;
+                var direction = command & 0x0F;
+                var isBareCommand = distance == 0;
                 if (isBareCommand)
                 {
                     // special command handling for no movement
@@ -189,7 +190,7 @@ namespace IxMilia.Shx
                             // TODO: unknown/unsupported
                             break;
                         case 0:
-                            stillReading = false;
+                            // shouldn't happen
                             break;
                         default:
                             break;
@@ -197,8 +198,6 @@ namespace IxMilia.Shx
                 }
                 else
                 {
-                    var distance = (command & 0xF0) >> 4;
-                    var direction = command & 0x0F;
                     var vector = DirectionVectors[direction];
                     var delta = vector * distance;
                     commands.Add(new ShxGlyphCommandMoveCursor(delta.X, delta.Y));

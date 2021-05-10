@@ -5,6 +5,19 @@ namespace IxMilia.Shx
 {
     internal class ShxCommandProcessorState
     {
+        private static readonly double PI4 = Math.Sqrt(2.0) * 0.2;
+        private static readonly IReadOnlyList<ShxPoint> OctantArcVectors = new ShxPoint[]
+            {
+                new ShxPoint(1.0, 0.0), // right
+                new ShxPoint(PI4, PI4),
+                new ShxPoint(0.0, 1.0), // up
+                new ShxPoint(-PI4, PI4),
+                new ShxPoint(-1.0, 0.0), // left
+                new ShxPoint(-PI4, -PI4),
+                new ShxPoint(0.0, -1.0), // down
+                new ShxPoint(PI4, -PI4),
+            };
+
         public List<ShxGlyphPath> Paths { get; } = new List<ShxGlyphPath>();
         public double Width { get; private set; }
         public double Height { get; private set; }
@@ -60,27 +73,56 @@ namespace IxMilia.Shx
 
         public void ProcessArc(ShxGlyphCommandOctagonalArc o)
         {
-            // TODO: OctantCount == 0 means full circle
-            var startAngle = o.StartingOctant * 0.25 * Math.PI;
-            var endAngle = (o.StartingOctant + o.OctantCount) * 0.25 * Math.PI;
-            var centerVector = new ShxPoint(Math.Cos(startAngle), Math.Sin(startAngle)) * o.Radius * -1.0;
-            var center = _lastPoint + centerVector;
-            var endVector = new ShxPoint(Math.Cos(endAngle), Math.Sin(endAngle)) * o.Radius;
+            var octantCount = o.OctantCount;
+            if (octantCount == 0)
+            {
+                // 0 means full circle
+                octantCount = 8;
+            }
+
+            var endingOctant = o.IsCounterClockwise
+                ? o.StartingOctant + octantCount
+                : o.StartingOctant - octantCount;
+            while (endingOctant < 0)
+            {
+                endingOctant += 8;
+            }
+
+            var startVector = OctantArcVectors[o.StartingOctant % 8] * o.Radius;
+            var endVector = OctantArcVectors[endingOctant % 8] * o.Radius;
+            if (o.OctantCount < 0)
+            {
+                var temp = startVector;
+                startVector = endVector;
+                endVector = temp;
+            }
+
+            var center = _lastPoint - startVector;
             _lastPoint = center + endVector;
             if (_isDrawing)
             {
+                var startAngle = Math.Atan2(startVector.Y, startVector.X);
+                var endAngle = Math.Atan2(endVector.Y, endVector.X);
+                if (!o.IsCounterClockwise)
+                {
+                    var temp = startAngle;
+                    startAngle = endAngle;
+                    endAngle = temp;
+                }
+
+                while (endAngle <= startAngle)
+                {
+                    endAngle += Math.PI * 2.0;
+                }
+
                 Paths.Add(new ShxArc(center, o.Radius, startAngle, endAngle));
             }
         }
 
         public void SetSize(double width, double height)
         {
-            if (Width == 0.0 && Height == 0.0)
-            {
-                // don't double set
-                Width = width;
-                Height = height;
-            }
+            Width += width;
+            Height += height;
         }
 
         public ShxGlyph CreateGlyph(string name)
@@ -151,7 +193,7 @@ namespace IxMilia.Shx
                 {
                     // heuristic: the vertical command skip usually preceeds a move that corresponds to the negative
                     // height and half the width of the character
-                    state.SetSize(Math.Abs(move.DeltaX) * 2.0, Math.Abs(move.DeltaY));
+                    state.SetSize(Math.Abs(move.DeltaX), Math.Abs(move.DeltaY));
                 }
             }
         }

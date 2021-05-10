@@ -12,19 +12,19 @@ namespace IxMilia.Shx
         // https://help.autodesk.com/view/ACD/2020/ENU/?guid=GUID-0A8E12A1-F4AB-44AD-8A9B-2140E0D5FD23
         private static readonly IReadOnlyList<ShxPoint> DirectionVectors = new ShxPoint[]
             {
-                new ShxPoint(1.0, 0.0), // right
+                new ShxPoint(1.0, 0.0), // 0 degrees (right)
                 new ShxPoint(1.0, 0.5),
                 new ShxPoint(1.0, 1.0), // 45 degrees
                 new ShxPoint(0.5, 1.0),
-                new ShxPoint(0.0, 1.0), // up
+                new ShxPoint(0.0, 1.0), // 90 degrees (up)
                 new ShxPoint(-0.5, 1.0),
                 new ShxPoint(-1.0, 1.0), // 135 degrees
                 new ShxPoint(-1.0, 0.5),
-                new ShxPoint(-1.0, 0.0), // left
+                new ShxPoint(-1.0, 0.0), // 180 degreesn (left)
                 new ShxPoint(-1.0, -0.5),
                 new ShxPoint(-1.0, -1.0), // 225 degrees
                 new ShxPoint(-0.5, -1.0),
-                new ShxPoint(0.0, -1.0), // 270 degrees
+                new ShxPoint(0.0, -1.0), // 270 degrees (down)
                 new ShxPoint(0.5, -1.0),
                 new ShxPoint(1.0, -1.0), // 315 degrees
                 new ShxPoint(1.0, -0.5)
@@ -132,9 +132,10 @@ namespace IxMilia.Shx
                                 if (reader.TryReadByte(out var radius) &&
                                     reader.TryReadByte(out var sc))
                                 {
-                                    var startingOctant = (sc & 0xF0) >> 4;
-                                    var octantCount = sc & 0x0F;
-                                    commands.Add(new ShxGlyphCommandOctagonalArc(radius, startingOctant, octantCount));
+                                    var isCounterClockwise = (sc & 0b10000000) == 0;
+                                    var startingOctant = (sc & 0b01110000) >> 4;
+                                    var octantCount = sc & 0b00000111;
+                                    commands.Add(new ShxGlyphCommandOctagonalArc(radius, startingOctant, octantCount, isCounterClockwise));
                                 }
                             }
                             break;

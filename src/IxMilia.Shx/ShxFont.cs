@@ -59,6 +59,27 @@ namespace IxMilia.Shx
             return Load(buffer);
         }
 
+        internal bool TryReadFontData(ByteReader reader)
+        {
+            Name = reader.ReadNullTerminatedString();
+            if (reader.TryReadByte(out var upperCaseBaselineOffset) &&
+                reader.TryReadByte(out var lowerCaseBaselineOffset) &&
+                reader.TryReadByte(out var fontMode) &&
+                reader.TryReadByte(out var fontEncoding) &&
+                reader.TryReadByte(out var embeddingType) &&
+                reader.TryReadByte(out var unknown))
+            {
+                UpperCaseBaselineOffset = upperCaseBaselineOffset;
+                LowerCaseBaselineDropOffset = lowerCaseBaselineOffset;
+                FontMode = (ShxFontMode)fontMode;
+                FontEncoding = (ShxFontEncoding)fontEncoding;
+                EmbeddingType = (ShxFontEmbeddingType)embeddingType;
+                return true;
+            }
+
+            return false;
+        }
+
         public static ShxFont Load(byte[] data)
         {
             var font = new ShxFont();
@@ -84,20 +105,7 @@ namespace IxMilia.Shx
                         var expectedEnd = startPos + characterByteCount;
                         if (characterCode == 0)
                         {
-                            font.Name = reader.ReadNullTerminatedString();
-                            if (reader.TryReadByte(out var upperCaseBaselineOffset) &&
-                                reader.TryReadByte(out var lowerCaseBaselineOffset) &&
-                                reader.TryReadByte(out var fontMode) &&
-                                reader.TryReadByte(out var fontEncoding) &&
-                                reader.TryReadByte(out var embeddingType) &&
-                                reader.TryReadByte(out var unknown))
-                            {
-                                font.UpperCaseBaselineOffset = upperCaseBaselineOffset;
-                                font.LowerCaseBaselineDropOffset = lowerCaseBaselineOffset;
-                                font.FontMode = (ShxFontMode)fontMode;
-                                font.FontEncoding = (ShxFontEncoding)fontEncoding;
-                                font.EmbeddingType = (ShxFontEmbeddingType)embeddingType;
-                            }
+                            font.TryReadFontData(reader);
                         }
                         else
                         {

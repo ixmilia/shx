@@ -17,7 +17,7 @@ namespace IxMilia.Shx.Test
                 0x02, // embed state
                 0x00, // unknown
             });
-            var font = new ShxFont();
+            var font = new ShxUniFont();
             Assert.True(font.TryReadFontData(reader));
             Assert.Equal("name", font.Name);
             Assert.Equal(8.0, font.UpperCaseBaselineOffset);

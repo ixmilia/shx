@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Collections.Generic;
 using System.IO;
 
 namespace IxMilia.Shx
@@ -25,7 +23,7 @@ namespace IxMilia.Shx
         ReadOnlyEmbeddable = 2,
     }
 
-    public class ShxFont
+    public abstract class ShxFont
     {
         Dictionary<char, ShxGlyph> _glyphs = new Dictionary<char, ShxGlyph>();
 
@@ -38,9 +36,9 @@ namespace IxMilia.Shx
         public ShxFontEncoding FontEncoding { get; private set; }
         public ShxFontEmbeddingType EmbeddingType { get; private set; }
 
-        private void AddGlyph(char code, ShxGlyph glyph) => _glyphs.Add(code, glyph);
+        protected void AddGlyph(char code, ShxGlyph glyph) => _glyphs.Add(code, glyph);
 
-        public ShxFont()
+        protected ShxFont()
         {
         }
 
@@ -58,6 +56,8 @@ namespace IxMilia.Shx
             stream.Read(buffer, 0, buffer.Length);
             return Load(buffer);
         }
+
+        internal abstract void Load(ByteReader reader);
 
         internal bool TryReadFontData(ByteReader reader)
         {
@@ -82,58 +82,21 @@ namespace IxMilia.Shx
 
         public static ShxFont Load(byte[] data)
         {
-            var font = new ShxFont();
-            var names = new Dictionary<ushort, string>();
-            var commands = new Dictionary<ushort, IEnumerable<ShxGlyphCommand>>();
             var reader = new ByteReader(data);
-            font.FileIdentifier = reader.ReadLine();
-            if (!font.FileIdentifier.Contains("unifont"))
+            var fileIdentifier = reader.ReadLine();
+            ShxFont font = null;
+            if (fileIdentifier.Contains("unifont"))
             {
-                // TODO: unsupported
-                return font;
+                font = new ShxUniFont();
             }
 
-            if (reader.TryReadByte(out var _) && // always 26 (0x1A)?
-                reader.TryReadUInt16LittleEndian(out var characterCount))
+            if (font == null)
             {
-                for (int i = 0; i < characterCount; i++)
-                {
-                    if (reader.TryReadUInt16LittleEndian(out var characterCode) &&
-                        reader.TryReadUInt16LittleEndian(out var characterByteCount))
-                    {
-                        var startPos = reader.Offset;
-                        var expectedEnd = startPos + characterByteCount;
-                        if (characterCode == 0)
-                        {
-                            font.TryReadFontData(reader);
-                        }
-                        else
-                        {
-                            var character = (char)characterCode;
-                            var glyphName = reader.ReadNullTerminatedString();
-                            if (string.IsNullOrEmpty(glyphName))
-                            {
-                                glyphName = character.ToString();
-                            }
-
-                            var glyphCommands = ShxGlyph.ParseCommands(reader, font.FontEncoding);
-                            commands.Add(characterCode, glyphCommands);
-                            names.Add(character, glyphName);
-                        }
-
-                        var remainingBytes = Math.Max(0, expectedEnd - reader.Offset);
-                        Debug.Assert(remainingBytes == 0);
-                    }
-                }
+                return null;
             }
 
-            foreach (var kvp in commands)
-            {
-                var character = (char)kvp.Key;
-                var glyphCommands = kvp.Value;
-                var glyph = ShxCommandProcessor.Process(names[kvp.Key], glyphCommands, commands);
-                font.AddGlyph(character, glyph);
-            }
+            font.FileIdentifier = fileIdentifier;
+            font.Load(reader);
 
             return font;
         }

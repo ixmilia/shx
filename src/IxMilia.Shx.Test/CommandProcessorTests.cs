@@ -29,5 +29,18 @@ namespace IxMilia.Shx.Test
             Assert.Equal(0.9572040116406401, arc.StartAngle);
             Assert.Equal(1.6566992509164926, arc.EndAngle);
         }
+
+        [Fact]
+        public void FromBulgeArc()
+        {
+            var bulgeArc = new ShxGlyphCommandArc(0.0, 5.0, 127.0);
+            var lastPoint = ShxPoint.Origin;
+            var arc = ShxCommandProcessorState.FromArcCommand(bulgeArc, ref lastPoint);
+            Assert.Equal(new ShxPoint(0.0, 5.0), lastPoint);
+            Assert.Equal(new ShxPoint(0.0, 2.5), arc.Center);
+            Assert.Equal(2.5, arc.Radius);
+            Assert.Equal(-1.5707963267948966, arc.StartAngle);
+            Assert.Equal(1.5707963267948966, arc.EndAngle);
+        }
     }
 }

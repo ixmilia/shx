@@ -95,22 +95,11 @@ namespace IxMilia.Shx
 
         public void ProcessArc(ShxGlyphCommandArc a)
         {
-            var offset = new ShxPoint(a.XDisplacement, a.YDisplacement);
-            var distance = offset.Length;
-            var perpendicularHeight = Math.Abs(a.Bulge) * distance / 254.0;
-            var isCounterClockwise = a.Bulge >= 0.0;
-            var perpendicularVector = offset.Perpendicular.Normalized * perpendicularHeight;
-            var startPoint = _lastPoint;
-            var midPoint = startPoint + offset.MidPoint + perpendicularVector;
-            var endPoint = startPoint + offset;
+            var arc = FromArcCommand(a, ref _lastPoint);
             if (_isDrawing)
             {
-                // TODO: add actual arc, not just lines
-                Paths.Add(new ShxLine(startPoint, midPoint));
-                Paths.Add(new ShxLine(midPoint, endPoint));
+                Paths.Add(arc);
             }
-
-            _lastPoint = endPoint;
         }
 
         public void SetSize(double width, double height)
@@ -185,6 +174,37 @@ namespace IxMilia.Shx
             var center = lastPoint - startVector;
             lastPoint = center + endVector;
             var arc = new ShxArc(center, radius, startAngleRadians, endAngleRadians);
+            return arc;
+        }
+
+        public static ShxArc FromArcCommand(ShxGlyphCommandArc a, ref ShxPoint lastPoint)
+        {
+            var offset = new ShxPoint(a.XDisplacement, a.YDisplacement);
+            var chordLength = offset.Length;
+            var perpendicularHeight = Math.Abs(a.Bulge) * chordLength / 254.0;
+            var isCounterClockwise = a.Bulge >= 0.0;
+            var perpendicularVector = offset.Perpendicular.Normalized * perpendicularHeight;
+            var startPoint = lastPoint;
+            var midPoint = startPoint + offset.MidPoint + perpendicularVector;
+            var endPoint = startPoint + offset;
+            lastPoint = endPoint;
+
+            var radius = (perpendicularHeight / 2.0) + (chordLength * chordLength / (8.0 * perpendicularHeight));
+            var center = midPoint - (perpendicularVector.Normalized * radius);
+            var arcAngle = 2.0 * Math.Asin(chordLength / (2.0 * radius));
+            if (!isCounterClockwise)
+            {
+                var temp = startPoint;
+                startPoint = endPoint;
+                endPoint = temp;
+            }
+
+            var startPointVector = startPoint - center;
+            var startAngle = Math.Atan2(startPointVector.Y, startPointVector.X);
+            var endPointVector = endPoint - center;
+            var endAngle = Math.Atan2(endPointVector.Y, endPointVector.X);
+
+            var arc = new ShxArc(center, radius, startAngle, endAngle);
             return arc;
         }
     }

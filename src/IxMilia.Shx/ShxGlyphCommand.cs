@@ -52,14 +52,14 @@
         }
     }
 
-    internal class ShxGlyphCommandOctagonalArc : ShxGlyphCommand
+    internal class ShxGlyphCommandOctantArc : ShxGlyphCommand
     {
         public double Radius { get; }
         public int StartingOctant { get; }
         public int OctantCount { get; }
         public bool IsCounterClockwise { get; }
 
-        public ShxGlyphCommandOctagonalArc(double radius, int startingOctant, int octantCount, bool isCounterClockwise)
+        public ShxGlyphCommandOctantArc(double radius, int startingOctant, int octantCount, bool isCounterClockwise)
         {
             Radius = radius;
             StartingOctant = startingOctant;
@@ -76,8 +76,9 @@
         public double Radius { get; }
         public int StartingOctant { get; }
         public int OctantCount { get; }
+        public bool IsCounterClockwise { get; }
 
-        public ShxGlyphCommandFractionalArc(double startOffset, double endOffset, double highRadius, double radius, int startingOctant, int octantCount)
+        public ShxGlyphCommandFractionalArc(double startOffset, double endOffset, double highRadius, double radius, int startingOctant, int octantCount, bool isCounterClockwise)
         {
             StartOffset = startOffset;
             EndOffset = endOffset;
@@ -85,6 +86,7 @@
             Radius = radius;
             StartingOctant = startingOctant;
             OctantCount = octantCount;
+            IsCounterClockwise = isCounterClockwise;
         }
     }
 

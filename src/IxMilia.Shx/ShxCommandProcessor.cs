@@ -7,16 +7,16 @@ namespace IxMilia.Shx
     {
         private static readonly double PI4 = Math.Sqrt(2.0) * 0.2;
         private static readonly IReadOnlyList<ShxPoint> OctantArcVectors = new ShxPoint[]
-            {
-                new ShxPoint(1.0, 0.0), // right
-                new ShxPoint(PI4, PI4),
-                new ShxPoint(0.0, 1.0), // up
-                new ShxPoint(-PI4, PI4),
-                new ShxPoint(-1.0, 0.0), // left
-                new ShxPoint(-PI4, -PI4),
-                new ShxPoint(0.0, -1.0), // down
-                new ShxPoint(PI4, -PI4),
-            };
+        {
+            new ShxPoint(1.0, 0.0), // right
+            new ShxPoint(PI4, PI4),
+            new ShxPoint(0.0, 1.0), // up
+            new ShxPoint(-PI4, PI4),
+            new ShxPoint(-1.0, 0.0), // left
+            new ShxPoint(-PI4, -PI4),
+            new ShxPoint(0.0, -1.0), // down
+            new ShxPoint(PI4, -PI4),
+        };
 
         public List<ShxGlyphPath> Paths { get; } = new List<ShxGlyphPath>();
         public double Width { get; private set; }
@@ -75,51 +75,21 @@ namespace IxMilia.Shx
             _lastPoint = nextPoint;
         }
 
-        public void ProcessArc(ShxGlyphCommandOctagonalArc o)
+        public void ProcessArc(ShxGlyphCommandOctantArc a)
         {
-            var octantCount = o.OctantCount;
-            if (octantCount == 0)
-            {
-                // 0 means full circle
-                octantCount = 8;
-            }
-
-            var endingOctant = o.IsCounterClockwise
-                ? o.StartingOctant + octantCount
-                : o.StartingOctant - octantCount;
-            while (endingOctant < 0)
-            {
-                endingOctant += 8;
-            }
-
-            var startVector = OctantArcVectors[o.StartingOctant % 8] * o.Radius;
-            var endVector = OctantArcVectors[endingOctant % 8] * o.Radius;
-            if (o.OctantCount < 0)
-            {
-                var temp = startVector;
-                startVector = endVector;
-                endVector = temp;
-            }
-
-            var center = _lastPoint - startVector;
-            _lastPoint = center + endVector;
+            var arc = FromArcCommand(a, ref _lastPoint);
             if (_isDrawing)
             {
-                var startAngle = Math.Atan2(startVector.Y, startVector.X);
-                var endAngle = Math.Atan2(endVector.Y, endVector.X);
-                if (!o.IsCounterClockwise)
-                {
-                    var temp = startAngle;
-                    startAngle = endAngle;
-                    endAngle = temp;
-                }
+                Paths.Add(arc);
+            }
+        }
 
-                while (endAngle <= startAngle)
-                {
-                    endAngle += Math.PI * 2.0;
-                }
-
-                Paths.Add(new ShxArc(center, o.Radius, startAngle, endAngle));
+        public void ProcessArc(ShxGlyphCommandFractionalArc a)
+        {
+            var arc = FromArcCommand(a, ref _lastPoint);
+            if (_isDrawing)
+            {
+                Paths.Add(arc);
             }
         }
 
@@ -153,6 +123,69 @@ namespace IxMilia.Shx
         {
             var glyph = new ShxGlyph(name, Paths, Width, Height);
             return glyph;
+        }
+
+        public static ShxArc FromArcCommand(ShxGlyphCommandOctantArc a, ref ShxPoint lastPoint)
+        {
+            var octantCount = a.OctantCount;
+            if (octantCount == 0)
+            {
+                // 0 means full circle
+                octantCount = 8;
+            }
+
+            var endingOctant = a.IsCounterClockwise
+                ? a.StartingOctant + octantCount
+                : a.StartingOctant - octantCount;
+            while (endingOctant < 0)
+            {
+                endingOctant += 8;
+            }
+
+            var startVector = OctantArcVectors[a.StartingOctant % 8] * a.Radius;
+            var endVector = OctantArcVectors[endingOctant % 8] * a.Radius;
+            if (a.OctantCount < 0)
+            {
+                var temp = startVector;
+                startVector = endVector;
+                endVector = temp;
+            }
+
+            var center = lastPoint - startVector;
+            lastPoint = center + endVector;
+            var startAngle = Math.Atan2(startVector.Y, startVector.X);
+            var endAngle = Math.Atan2(endVector.Y, endVector.X);
+            if (!a.IsCounterClockwise)
+            {
+                var temp = startAngle;
+                startAngle = endAngle;
+                endAngle = temp;
+            }
+
+            while (endAngle <= startAngle)
+            {
+                endAngle += Math.PI * 2.0;
+            }
+
+            return new ShxArc(center, a.Radius, startAngle, endAngle);
+        }
+
+        public static ShxArc FromArcCommand(ShxGlyphCommandFractionalArc a, ref ShxPoint lastPoint)
+        {
+            var radius = a.HighRadius * 256.0 + a.Radius;
+            var startOctantAngle = a.StartingOctant * 45.0;
+            var endOctantAngle = (a.StartingOctant + a.OctantCount - 1) * 45.0;
+            var startAngleDegrees = (45.0 * a.StartOffset / 256.0) + startOctantAngle;
+            var startAngleRadians = startAngleDegrees * Math.PI / 180.0;
+            var endAngleDegrees = (45.0 * a.EndOffset / 256.0) + endOctantAngle;
+            var endAngleRadians = endAngleDegrees * Math.PI / 180.0;
+
+            var startVector = ShxPoint.FromAngleRadians(startAngleRadians) * radius;
+            var endVector = ShxPoint.FromAngleRadians(endAngleRadians) * radius;
+            var center = lastPoint - startVector;
+            lastPoint = center + endVector;
+            var arc = new ShxArc(center, radius, startAngleRadians, endAngleRadians);
+            return arc;
         }
     }
 
@@ -196,11 +229,11 @@ namespace IxMilia.Shx
                         case ShxGlyphCommandMoveCursor m:
                             state.ProcessNewPosition(new ShxPoint(m.DeltaX, m.DeltaY));
                             break;
-                        case ShxGlyphCommandOctagonalArc a:
+                        case ShxGlyphCommandOctantArc a:
                             state.ProcessArc(a);
                             break;
                         case ShxGlyphCommandFractionalArc a:
-                            // TODO: draw arc
+                            state.ProcessArc(a);
                             break;
                         case ShxGlyphCommandArc a:
                             state.ProcessArc(a);

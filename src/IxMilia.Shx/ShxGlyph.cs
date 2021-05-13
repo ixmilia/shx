@@ -135,7 +135,7 @@ namespace IxMilia.Shx
                                     var isCounterClockwise = (sc & 0b10000000) == 0;
                                     var startingOctant = (sc & 0b01110000) >> 4;
                                     var octantCount = sc & 0b00000111;
-                                    commands.Add(new ShxGlyphCommandOctagonalArc(radius, startingOctant, octantCount, isCounterClockwise));
+                                    commands.Add(new ShxGlyphCommandOctantArc(radius, startingOctant, octantCount, isCounterClockwise));
                                 }
                             }
                             break;
@@ -148,9 +148,10 @@ namespace IxMilia.Shx
                                     reader.TryReadByte(out var radius) &&
                                     reader.TryReadByte(out var sc))
                                 {
-                                    var startingOctant = (sc & 0xF0) >> 4;
-                                    var octantCount = sc & 0x0F;
-                                    commands.Add(new ShxGlyphCommandFractionalArc(startOffset, endOffset, highRadius, radius, startingOctant, octantCount));
+                                    var isCounterClockwise = (sc & 0b10000000) == 0;
+                                    var startingOctant = (sc & 0b01110000) >> 4;
+                                    var octantCount = sc & 0b00000111;
+                                    commands.Add(new ShxGlyphCommandFractionalArc(startOffset, endOffset, highRadius, radius, startingOctant, octantCount, isCounterClockwise));
                                 }
                             }
                             break;

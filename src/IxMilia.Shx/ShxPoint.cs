@@ -74,6 +74,16 @@ namespace IxMilia.Shx
             return string.Format("({0},{1})", X, Y);
         }
 
+        public static ShxPoint FromAngleDegrees(double angle)
+        {
+            return FromAngleRadians(angle * Math.PI / 180.0);
+        }
+
+        public static ShxPoint FromAngleRadians(double angle)
+        {
+            return new ShxPoint(Math.Cos(angle), Math.Sin(angle));
+        }
+
         public static ShxPoint Origin
         {
             get { return new ShxPoint(0.0, 0.0); }

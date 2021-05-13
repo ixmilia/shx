@@ -128,7 +128,7 @@ namespace IxMilia.Shx
                             break;
                         case 0xA:
                             {
-                                // octagonal arc
+                                // octant arc
                                 if (reader.TryReadByte(out var radius) &&
                                     reader.TryReadByte(out var sc))
                                 {

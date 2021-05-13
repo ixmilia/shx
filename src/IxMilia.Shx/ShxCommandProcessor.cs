@@ -45,7 +45,11 @@ namespace IxMilia.Shx
 
         public void PopPoint()
         {
-            _lastPoint = _pointStack.Pop();
+            if (_pointStack.Count > 0)
+            {
+                // TODO: some fonts contain a single pop instruction for the character '\r'
+                _lastPoint = _pointStack.Pop();
+            }
         }
 
         public bool MoveNext()
@@ -119,6 +123,26 @@ namespace IxMilia.Shx
             }
         }
 
+        public void ProcessArc(ShxGlyphCommandArc a)
+        {
+            var offset = new ShxPoint(a.XDisplacement, a.YDisplacement);
+            var distance = offset.Length;
+            var perpendicularHeight = Math.Abs(a.Bulge) * distance / 254.0;
+            var isCounterClockwise = a.Bulge >= 0.0;
+            var perpendicularVector = offset.Perpendicular.Normalized * perpendicularHeight;
+            var startPoint = _lastPoint;
+            var midPoint = startPoint + offset.MidPoint + perpendicularVector;
+            var endPoint = startPoint + offset;
+            if (_isDrawing)
+            {
+                // TODO: add actual arc, not just lines
+                Paths.Add(new ShxLine(startPoint, midPoint));
+                Paths.Add(new ShxLine(midPoint, endPoint));
+            }
+
+            _lastPoint = endPoint;
+        }
+
         public void SetSize(double width, double height)
         {
             Width += width;
@@ -179,7 +203,7 @@ namespace IxMilia.Shx
                             // TODO: draw arc
                             break;
                         case ShxGlyphCommandArc a:
-                            // TODO: draw arc
+                            state.ProcessArc(a);
                             break;
                         case ShxGlyphCommandSkipNextIfHorizontal _:
                             // always assuming horizontal mode

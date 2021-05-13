@@ -46,7 +46,7 @@ namespace IxMilia.Shx
 
         public static ShxFont Load(string path)
         {
-            using (var stream = new FileStream(path, FileMode.Open))
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read))
             {
                 return Load(stream);
             }
@@ -66,6 +66,12 @@ namespace IxMilia.Shx
             var commands = new Dictionary<ushort, IEnumerable<ShxGlyphCommand>>();
             var reader = new ByteReader(data);
             font.FileIdentifier = reader.ReadLine();
+            if (!font.FileIdentifier.Contains("unifont"))
+            {
+                // TODO: unsupported
+                return font;
+            }
+
             if (reader.TryReadByte(out var _) && // always 26 (0x1A)?
                 reader.TryReadUInt16LittleEndian(out var characterCount))
             {

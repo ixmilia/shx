@@ -14,6 +14,16 @@ namespace IxMilia.Shx
             this.Y = y;
         }
 
+        public double LengthSquared => X * X + Y * Y;
+
+        public double Length => Math.Sqrt(LengthSquared);
+
+        public ShxPoint Normalized => this / Length;
+
+        public ShxPoint Perpendicular => new ShxPoint(-Y, X);
+
+        public ShxPoint MidPoint => this * 0.5;
+
         public static bool operator ==(ShxPoint p1, ShxPoint p2)
         {
             return p1.X == p2.X && p1.Y == p2.Y;

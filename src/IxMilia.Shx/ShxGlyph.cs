@@ -157,9 +157,9 @@ namespace IxMilia.Shx
                         case 0xC:
                             {
                                 // arc
-                                if (reader.TryReadByte(out var xDisplacement) &&
-                                    reader.TryReadByte(out var yDisplacement) &&
-                                    reader.TryReadByte(out var bulge))
+                                if (reader.TryReadSByte(out var xDisplacement) &&
+                                    reader.TryReadSByte(out var yDisplacement) &&
+                                    reader.TryReadSByte(out var bulge))
                                 {
                                     commands.Add(new ShxGlyphCommandArc(xDisplacement, yDisplacement, bulge));
                                 }
@@ -168,15 +168,15 @@ namespace IxMilia.Shx
                         case 0xD:
                             {
                                 // continuous arcs
-                                while (reader.TryReadByte(out var xDisplacement)
-                                    && reader.TryReadByte(out var yDisplacement))
+                                while (reader.TryReadSByte(out var xDisplacement)
+                                    && reader.TryReadSByte(out var yDisplacement))
                                 {
                                     if (xDisplacement == 0 && yDisplacement == 0)
                                     {
                                         break;
                                     }
 
-                                    if (reader.TryReadByte(out var bulge))
+                                    if (reader.TryReadSByte(out var bulge))
                                     {
                                         commands.Add(new ShxGlyphCommandArc(xDisplacement, yDisplacement, bulge));
                                     }

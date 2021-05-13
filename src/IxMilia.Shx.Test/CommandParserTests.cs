@@ -156,5 +156,22 @@ namespace IxMilia.Shx.Test
         {
             var _ = (ShxGlyphCommandSkipNextIfHorizontal)ParseCommand(0x0E);
         }
+
+        [Fact]
+        public void ParseCommandsUntilNull()
+        {
+            var commands = ParseCommands(new byte[]
+            {
+                0x01, // pen down
+                0x08, 0x00, 0x01, // move (0, 1)
+                0x00, // end
+                0x01, // will be ignored
+            });
+            Assert.Equal(2, commands.Count);
+            var _ = (ShxGlyphCommandPenDown)commands[0];
+            var move = (ShxGlyphCommandMoveCursor)commands[1];
+            Assert.Equal(0.0, move.DeltaX);
+            Assert.Equal(1.0, move.DeltaY);
+        }
     }
 }

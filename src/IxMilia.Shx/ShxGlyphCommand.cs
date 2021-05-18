@@ -33,10 +33,23 @@
     internal class ShxGlyphCommandReplayCharacter : ShxGlyphCommand
     {
         public ushort Character { get; }
+        public double XOffset { get; }
+        public double YOffset { get; }
+        public double Width { get; }
+        public double Height { get; }
 
         public ShxGlyphCommandReplayCharacter(ushort character)
+            : this(character, 0.0, 0.0, 1.0, 1.0)
+        {
+        }
+
+        public ShxGlyphCommandReplayCharacter(ushort character, double xOffset, double yOffset, double width, double height)
         {
             Character = character;
+            XOffset = xOffset;
+            YOffset = yOffset;
+            Width = width;
+            Height = height;
         }
     }
 

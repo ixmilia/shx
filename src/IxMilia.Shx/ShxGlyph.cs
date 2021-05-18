@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace IxMilia.Shx
 {
@@ -20,7 +21,7 @@ namespace IxMilia.Shx
                 new ShxPoint(-0.5, 1.0),
                 new ShxPoint(-1.0, 1.0), // 135 degrees
                 new ShxPoint(-1.0, 0.5),
-                new ShxPoint(-1.0, 0.0), // 180 degreesn (left)
+                new ShxPoint(-1.0, 0.0), // 180 degrees (left)
                 new ShxPoint(-1.0, -0.5),
                 new ShxPoint(-1.0, -1.0), // 225 degrees
                 new ShxPoint(-0.5, -1.0),
@@ -38,7 +39,7 @@ namespace IxMilia.Shx
             Height = height;
         }
 
-        internal static List<ShxGlyphCommand> ParseCommands(ByteReader reader, ShxFontEncoding fontEncoding)
+        internal static List<ShxGlyphCommand> ParseCommands(ByteReader reader, ShxFontEncoding fontEncoding, bool isBigFont)
         {
             var commands = new List<ShxGlyphCommand>();
             while (reader.TryReadByte(out var command) && command != 0)
@@ -83,19 +84,44 @@ namespace IxMilia.Shx
                             break;
                         case 7:
                             {
-                                // replay the given character code
-                                if (fontEncoding == ShxFontEncoding.Unicode)
+                                if (isBigFont)
                                 {
-                                    if (reader.TryReadUInt16BigEndian(out var replayCode))
+                                    // https://help.autodesk.com/view/ACD/2020/ENU/?guid=GUID-00ED0CC6-A4BE-4591-93FA-598CC40AA43D
+                                    if (reader.TryReadByte(out var replayCode))
                                     {
-                                        commands.Add(new ShxGlyphCommandReplayCharacter(replayCode));
+                                        if (replayCode == 0 &&
+                                            reader.TryReadSByte(out var xoffset) &&
+                                            reader.TryReadSByte(out var yoffset) &&
+                                            reader.TryReadByte(out var width) &&
+                                            reader.TryReadByte(out var height))
+                                        {
+                                            commands.Add(new ShxGlyphCommandReplayCharacter(replayCode, xoffset, yoffset, width, height));
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // sometimes it's not zero?
+                                        reader.TryReadByte(out var lowerByte);
+                                        var fullCode = (ushort)((replayCode << 8) | lowerByte);
+                                        commands.Add(new ShxGlyphCommandReplayCharacter(fullCode));
                                     }
                                 }
                                 else
                                 {
-                                    if (reader.TryReadByte(out var replayCode))
+                                    // replay the given character code
+                                    if (fontEncoding == ShxFontEncoding.Unicode)
                                     {
-                                        commands.Add(new ShxGlyphCommandReplayCharacter(replayCode));
+                                        if (reader.TryReadUInt16BigEndian(out var replayCode))
+                                        {
+                                            commands.Add(new ShxGlyphCommandReplayCharacter(replayCode));
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (reader.TryReadByte(out var replayCode))
+                                        {
+                                            commands.Add(new ShxGlyphCommandReplayCharacter(replayCode));
+                                        }
                                     }
                                 }
                             }

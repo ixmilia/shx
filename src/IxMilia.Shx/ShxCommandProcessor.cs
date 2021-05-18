@@ -243,8 +243,11 @@ namespace IxMilia.Shx
                             state.PopPoint();
                             break;
                         case ShxGlyphCommandReplayCharacter r:
-                            var subCommands = characters[r.Character];
-                            Process(state, subCommands, characters);
+                            if (characters.TryGetValue(r.Character, out var subCommands))
+                            {
+                                // TODO: handle offset/scale
+                                Process(state, subCommands, characters);
+                            }
                             break;
                         case ShxGlyphCommandMoveCursor m:
                             state.ProcessNewPosition(new ShxPoint(m.DeltaX, m.DeltaY));

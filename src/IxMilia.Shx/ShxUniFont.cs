@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace IxMilia.Shx
@@ -11,13 +10,31 @@ namespace IxMilia.Shx
         {
         }
 
-        internal override void Load(ByteReader reader)
+        internal bool TryReadFontData(ByteReader reader)
         {
-            var names = new Dictionary<ushort, string>();
-            var commands = new Dictionary<ushort, IEnumerable<ShxGlyphCommand>>();
+            Name = reader.ReadNullTerminatedString();
+            if (reader.TryReadByte(out var upperCaseBaselineOffset) &&
+                reader.TryReadByte(out var lowerCaseBaselineOffset) &&
+                reader.TryReadByte(out var fontMode) &&
+                reader.TryReadByte(out var fontEncoding) &&
+                reader.TryReadByte(out var embeddingType) &&
+                reader.TryReadByte(out var unknown))
+            {
+                UpperCaseBaselineOffset = upperCaseBaselineOffset;
+                LowerCaseBaselineDropOffset = lowerCaseBaselineOffset;
+                FontMode = (ShxFontMode)fontMode;
+                FontEncoding = (ShxFontEncoding)fontEncoding;
+                EmbeddingType = (ShxFontEmbeddingType)embeddingType;
+                return true;
+            }
 
-            if (reader.TryReadByte(out var _) && // always 26 (0x1A)?
-                reader.TryReadUInt16LittleEndian(out var characterCount))
+            return false;
+        }
+
+        internal override ShxGlyphCommandData Load(ByteReader reader)
+        {
+            var commandData = new ShxGlyphCommandData();
+            if (reader.TryReadUInt16LittleEndian(out var characterCount))
             {
                 for (int i = 0; i < characterCount; i++)
                 {
@@ -39,9 +56,8 @@ namespace IxMilia.Shx
                                 glyphName = character.ToString();
                             }
 
-                            var glyphCommands = ShxGlyph.ParseCommands(reader, FontEncoding);
-                            commands.Add(characterCode, glyphCommands);
-                            names.Add(character, glyphName);
+                            var glyphCommands = ShxGlyph.ParseCommands(reader, FontEncoding, isBigFont: false);
+                            commandData.AddGlyphCommands(characterCode, glyphName, glyphCommands);
                         }
 
                         var remainingBytes = Math.Max(0, expectedEnd - reader.Offset);
@@ -50,13 +66,7 @@ namespace IxMilia.Shx
                 }
             }
 
-            foreach (var kvp in commands)
-            {
-                var character = (char)kvp.Key;
-                var glyphCommands = kvp.Value;
-                var glyph = ShxCommandProcessor.Process(names[kvp.Key], glyphCommands, commands);
-                AddGlyph(character, glyph);
-            }
+            return commandData;
         }
     }
 }

@@ -13,6 +13,11 @@ namespace IxMilia.Shx
             Offset = offset;
         }
 
+        public ByteReader FromOffset(int offset)
+        {
+            return new ByteReader(Data, offset);
+        }
+
         public bool TryReadByte(out byte b)
         {
             if (BytesRemain)
@@ -38,12 +43,18 @@ namespace IxMilia.Shx
             return false;
         }
 
+        public static ushort CombineLittleEndian(byte b1, byte b2)
+        {
+            var result = (ushort)((b2 << 8) | b1);
+            return result;
+        }
+
         public bool TryReadUInt16LittleEndian(out ushort us)
         {
             if (TryReadByte(out var low) &&
                 TryReadByte(out var high))
             {
-                us = (ushort)((high << 8) | low);
+                us = CombineLittleEndian(low, high);
                 return true;
             }
 
@@ -61,6 +72,21 @@ namespace IxMilia.Shx
             }
 
             us = default;
+            return false;
+        }
+
+        public bool TryReadUInt32LittleEndian(out uint ui)
+        {
+            if (TryReadByte(out var a) &&
+                TryReadByte(out var b) &&
+                TryReadByte(out var c) &&
+                TryReadByte(out var d))
+            {
+                ui = (uint)((d << 24) | (c << 16) | (b << 8) | a);
+                return true;
+            }
+
+            ui = default;
             return false;
         }
 

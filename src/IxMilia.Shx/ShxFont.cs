@@ -6,6 +6,7 @@ namespace IxMilia.Shx
     public enum ShxFontMode
     {
         HorizontalOnly = 0,
+        VerticalOnly = 1,
         HorizontalAndVertical = 2,
     }
 
@@ -25,18 +26,19 @@ namespace IxMilia.Shx
 
     public abstract class ShxFont
     {
-        Dictionary<char, ShxGlyph> _glyphs = new Dictionary<char, ShxGlyph>();
+        Dictionary<ushort, ShxGlyph> _glyphs = new Dictionary<ushort, ShxGlyph>();
 
-        public IReadOnlyDictionary<char, ShxGlyph> Glyphs => _glyphs;
+        public IReadOnlyDictionary<ushort, ShxGlyph> Glyphs => _glyphs;
         public string FileIdentifier { get; private set; }
-        public string Name { get; private set; }
-        public double UpperCaseBaselineOffset { get; private set; }
-        public double LowerCaseBaselineDropOffset { get; private set; }
-        public ShxFontMode FontMode { get; private set; }
-        public ShxFontEncoding FontEncoding { get; private set; }
-        public ShxFontEmbeddingType EmbeddingType { get; private set; }
+        public string Name { get; protected set; }
+        public double UpperCaseBaselineOffset { get; protected set; }
+        public double LowerCaseBaselineDropOffset { get; protected set; }
+        public double CharacterWidth { get; protected set; }
+        public ShxFontMode FontMode { get; protected set; }
+        public ShxFontEncoding FontEncoding { get; protected set; }
+        public ShxFontEmbeddingType EmbeddingType { get; protected set; }
 
-        protected void AddGlyph(char code, ShxGlyph glyph) => _glyphs.Add(code, glyph);
+        private void AddGlyph(ushort code, ShxGlyph glyph) => _glyphs.Add(code, glyph);
 
         protected ShxFont()
         {
@@ -57,28 +59,7 @@ namespace IxMilia.Shx
             return Load(buffer);
         }
 
-        internal abstract void Load(ByteReader reader);
-
-        internal bool TryReadFontData(ByteReader reader)
-        {
-            Name = reader.ReadNullTerminatedString();
-            if (reader.TryReadByte(out var upperCaseBaselineOffset) &&
-                reader.TryReadByte(out var lowerCaseBaselineOffset) &&
-                reader.TryReadByte(out var fontMode) &&
-                reader.TryReadByte(out var fontEncoding) &&
-                reader.TryReadByte(out var embeddingType) &&
-                reader.TryReadByte(out var unknown))
-            {
-                UpperCaseBaselineOffset = upperCaseBaselineOffset;
-                LowerCaseBaselineDropOffset = lowerCaseBaselineOffset;
-                FontMode = (ShxFontMode)fontMode;
-                FontEncoding = (ShxFontEncoding)fontEncoding;
-                EmbeddingType = (ShxFontEmbeddingType)embeddingType;
-                return true;
-            }
-
-            return false;
-        }
+        internal abstract ShxGlyphCommandData Load(ByteReader reader);
 
         public static ShxFont Load(byte[] data)
         {
@@ -89,6 +70,10 @@ namespace IxMilia.Shx
             {
                 font = new ShxUniFont();
             }
+            else if (fileIdentifier.Contains("bigfont"))
+            {
+                font = new ShxBigFont();
+            }
 
             if (font == null)
             {
@@ -96,7 +81,16 @@ namespace IxMilia.Shx
             }
 
             font.FileIdentifier = fileIdentifier;
-            font.Load(reader);
+            reader.TryReadByte(out var unknown); // always 26 (0x1A)?
+            var commandData = font.Load(reader);
+
+            foreach (var kvp in commandData.Commands)
+            {
+                var character = kvp.Key;
+                var glyphCommands = kvp.Value;
+                var glyph = ShxCommandProcessor.Process(commandData.Names[kvp.Key], glyphCommands, commandData.Commands);
+                font.AddGlyph(character, glyph);
+            }
 
             return font;
         }

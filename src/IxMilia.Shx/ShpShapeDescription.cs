@@ -19,15 +19,19 @@ namespace IxMilia.Shx
             Data = data;
         }
 
-        public byte[] Compile()
+        internal byte[] Compile(bool includeHeader)
         {
             var shapeBytes = new List<byte>();
-            shapeBytes.AddRange(ByteExtensions.GetUInt16LittleEndian(ShapeNumber));
-            shapeBytes.AddRange(ByteExtensions.GetUInt16LittleEndian((ushort)Data.Length));
+            if (includeHeader)
+            {
+                shapeBytes.AddRange(ByteExtensions.GetUInt16LittleEndian(ShapeNumber));
+                shapeBytes.AddRange(ByteExtensions.GetUInt16LittleEndian((ushort)(Data.Length + 1)));
+            }
+
             shapeBytes.AddRange(Encoding.ASCII.GetBytes(Name));
-            shapeBytes.Add(0); // null terminator
+            shapeBytes.Add(0); // name terminator
             shapeBytes.AddRange(Data);
-            shapeBytes.Add(0); // end of shape
+            shapeBytes.Add(0); // data terminator
             return shapeBytes.ToArray();
         }
 
@@ -66,7 +70,7 @@ namespace IxMilia.Shx
                 {
                     if (dataLengthPlusTerminator != 4)
                     {
-                        throw new InvalidOperationException("Bigfont must have a data length of 4");
+                        throw new InvalidOperationException("BigFont must have a data length of 4");
                     }
                 }
             }
@@ -103,8 +107,10 @@ namespace IxMilia.Shx
                     }
                     else
                     {
-                        // decimal encoded
-                        data.Add(byte.Parse(part));
+                        // decimal encoded; values are [-128, 127] so must be parsed as a short
+                        var raw = short.Parse(part);
+                        var asByte = (byte)raw;
+                        data.Add(asByte);
                     }
                 }
             }

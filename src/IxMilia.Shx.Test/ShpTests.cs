@@ -101,6 +101,18 @@ namespace IxMilia.Shx.Test
         }
 
         [Fact]
+        public void ParseNegativeByteValues()
+        {
+            var lines = new[]
+            {
+                "*1,4,",
+                "8,(-128,127),0",
+            };
+            var shape = ShpShapeDescription.Parse(lines, 0, out var _);
+            Assert.Equal(new byte[] { 0x08, 0x80, 0x7F }, shape.Data);
+        }
+
+        [Fact]
         public void ShapeToString()
         {
             var shape = new ShpShapeDescription(42, "SHAPE_NAME", new byte[] { 0x01, 0x02, 0x0A });
@@ -110,26 +122,53 @@ namespace IxMilia.Shx.Test
         }
 
         [Fact]
-        public void LoadCompiledShp()
+        public void LoadCompiledUniFont()
         {
-            var shpFont = new ShpFont("test font name", 6.0, 2.0, ShxFontMode.HorizontalAndVertical);
-            shpFont.Shapes.Add(65, new ShpShapeDescription(65, "", new byte[]
-            {
-                1, // pen down
-                8, // move...
-                2, // ...right 2...
-                3, // ...up 3...
-                2, // pen up
-            }));
+            var shpFont = ShpFont.Parse(@"
+*UNIFONT,6,test font name
+6,2,2,0,0,0
+
+*65,6,uca
+1,8,(2,3),2,0
+");
             var compiled = shpFont.Compile();
 
             var shxFont = ShxFont.Load(compiled);
+            Assert.Equal(ShxFontEncoding.Unicode, shxFont.FontEncoding);
             Assert.IsType<ShxUniFont>(shxFont);
             Assert.Equal("test font name", shxFont.Name);
             Assert.Equal(6.0, shxFont.UpperCaseBaselineOffset);
             Assert.Equal(2.0, shxFont.LowerCaseBaselineDropOffset);
             Assert.Equal(ShxFontMode.HorizontalAndVertical, shxFont.FontMode);
-            Assert.Equal(ShxFontEncoding.Unicode, shxFont.FontEncoding);
+            Assert.Equal(ShxFontEmbeddingType.Embeddable, shxFont.EmbeddingType);
+            var glyphKvp = shxFont.Glyphs.Single();
+            Assert.Equal(65, glyphKvp.Key);
+            var glyph = glyphKvp.Value;
+            var pathItem = glyph.Paths.Single();
+            var line = Assert.IsType<ShxLine>(pathItem);
+            Assert.Equal(new ShxPoint(0, 0), line.P1);
+            Assert.Equal(new ShxPoint(2, 3), line.P2);
+        }
+
+        [Fact]
+        public void LoadCompiledBigFont()
+        {
+            var shpFont = ShpFont.Parse(@"
+*0,4,test font name
+6,2,2,0
+
+*65,6,uca
+1,8,(2,3),2,0
+");
+            var compiled = shpFont.Compile();
+
+            var shxFont = ShxFont.Load(compiled);
+            Assert.Equal(ShxFontEncoding.PackedMultibyte1, shxFont.FontEncoding);
+            Assert.IsType<ShxBigFont>(shxFont);
+            Assert.Equal("test font name", shxFont.Name);
+            Assert.Equal(6.0, shxFont.UpperCaseBaselineOffset);
+            Assert.Equal(2.0, shxFont.LowerCaseBaselineDropOffset);
+            Assert.Equal(ShxFontMode.HorizontalAndVertical, shxFont.FontMode);
             Assert.Equal(ShxFontEmbeddingType.Embeddable, shxFont.EmbeddingType);
             var glyphKvp = shxFont.Glyphs.Single();
             Assert.Equal(65, glyphKvp.Key);

@@ -34,31 +34,95 @@ namespace IxMilia.Shx
             var typeText = FontEncoding == ShxFontEncoding.Unicode ? "unifont" : "bigfont";
             finalBytes.AddRange(Encoding.ASCII.GetBytes($"AutoCAD-86 {typeText} 1.0\r\n")); // file identifier
             finalBytes.Add(0x1A); // unknown, always present
+
+            var content = FontEncoding == ShxFontEncoding.Unicode
+                ? CompileUniFont()
+                : CompileBigFont(finalBytes.Count);
+            finalBytes.AddRange(content);
+
+            return finalBytes.ToArray();
+        }
+
+        private byte[] CompileBigFont(int headerLength)
+        {
+            var finalBytes = new List<byte>();
+            finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian(8)); // estimated item count; always 8?
+            finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian((ushort)(Shapes.Count + 1))); // character count (+1 for font info)
+
+            var rangeCount = 1;
+            finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian((ushort)rangeCount)); // range count; always 1?
+            for (int rangeIndex = 0; rangeIndex < rangeCount; rangeIndex++)
+            {
+                finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian(128)); // range start; always 128?
+                finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian(158)); // range end; always 158?
+            }
+
+            // compile all character info
+            var shapeInfoList = new List<Tuple<ushort, string, byte[]>>();
+
+            // font info is character 0
+            var fontInfoBytes = new List<byte>();
+            fontInfoBytes.AddRange(Encoding.ASCII.GetBytes(Name));
+            fontInfoBytes.Add(0); // name terminator
+            fontInfoBytes.Add((byte)UpperCaseBaselineOffset);
+            fontInfoBytes.Add((byte)LowerCaseBaselineDropOffset);
+            fontInfoBytes.Add((byte)FontMode);
+            fontInfoBytes.Add((byte)EmbeddingType);
+            shapeInfoList.Add(Tuple.Create((ushort)0, Name, fontInfoBytes.ToArray()));
+            foreach (var shape in Shapes.Values.OrderBy(s => s.ShapeNumber))
+            {
+                shapeInfoList.Add(Tuple.Create(shape.ShapeNumber, shape.Name, shape.Compile(includeHeader: false)));
+            }
+
+            // write character table and offsets
+            var shapeListSize = (Shapes.Count + 1) * 8; // 2 ushorts and 1 uint each
+            var currentCharacterDataOffset = headerLength + finalBytes.Count + shapeListSize;
+            var shapeOffsets = new Dictionary<ushort, uint>();
+            foreach (var shapeInfoPair in shapeInfoList)
+            {
+                var shapeCode = shapeInfoPair.Item1;
+                var shapeName = shapeInfoPair.Item2;
+                var shapeData = shapeInfoPair.Item3;
+                finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian(shapeCode));
+                finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian((ushort)shapeData.Length));
+                finalBytes.AddRange(ByteExtensions.GetUInt32LittleEndian((uint)currentCharacterDataOffset));
+                shapeOffsets[shapeCode] = (uint)currentCharacterDataOffset;
+                currentCharacterDataOffset += shapeData.Length;
+            }
+
+            // write shape data
+            foreach (var shapeInfoPair in shapeInfoList)
+            {
+                var shapeCode = shapeInfoPair.Item1;
+                var shapeName = shapeInfoPair.Item2;
+                var shapeData = shapeInfoPair.Item3;
+                finalBytes.AddRange(shapeData);
+            }
+
+            return finalBytes.ToArray();
+        }
+
+        private byte[] CompileUniFont()
+        {
+            var finalBytes = new List<byte>();
             finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian((ushort)(Shapes.Count + 1))); // character count (+1 for font info)
 
             // add font info
-            finalBytes.Add(0); // shape number
-            finalBytes.Add(0);
-
-            var contentLength = (ushort)(FontEncoding == ShxFontEncoding.Unicode ? 6 : 4);
-            finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian(contentLength));
+            finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian(0)); // shape number
+            finalBytes.AddRange(ByteExtensions.GetUInt16LittleEndian(6));
             finalBytes.AddRange(Encoding.ASCII.GetBytes(Name));
             finalBytes.Add(0); // name null terminator
             finalBytes.Add((byte)UpperCaseBaselineOffset);
             finalBytes.Add((byte)LowerCaseBaselineDropOffset);
             finalBytes.Add((byte)FontMode);
-            if (FontEncoding == ShxFontEncoding.Unicode)
-            {
-                finalBytes.Add((byte)FontEncoding);
-                finalBytes.Add((byte)EmbeddingType);
-            }
-
+            finalBytes.Add((byte)FontEncoding);
+            finalBytes.Add((byte)EmbeddingType);
             finalBytes.Add(0); // terminator
 
             // add characters
             foreach (var shape in Shapes.Select(kvp => kvp.Value).OrderBy(s => s.ShapeNumber))
             {
-                finalBytes.AddRange(shape.Compile());
+                finalBytes.AddRange(shape.Compile(includeHeader: true));
             }
 
             return finalBytes.ToArray();

@@ -7,14 +7,25 @@ namespace IxMilia.Shx
         public static byte[] GetUInt16LittleEndian(ushort value)
         {
             var bytes = BitConverter.GetBytes(value);
-            if (BitConverter.IsLittleEndian)
+            CorrectEndianness(bytes);
+            return bytes;
+        }
+
+        public static byte[] GetUInt32LittleEndian(uint value)
+        {
+            var bytes = BitConverter.GetBytes(value);
+            CorrectEndianness(bytes);
+            return bytes;
+        }
+
+        private static byte[] CorrectEndianness(byte[] bytes)
+        {
+            if (!BitConverter.IsLittleEndian)
             {
-                return bytes;
+                Array.Reverse(bytes);
             }
-            else
-            {
-                return new byte[] { bytes[1], bytes[0] };
-            }
+
+            return bytes;
         }
     }
 }

@@ -35,12 +35,26 @@ namespace IxMilia.Shx.Test
         {
             var bulgeArc = new ShxGlyphCommandArc(0.0, 5.0, 127.0);
             var lastPoint = ShxPoint.Origin;
-            var arc = ShxCommandProcessorState.FromArcCommand(bulgeArc, ref lastPoint);
+            var path = ShxCommandProcessorState.FromArcCommand(bulgeArc, ref lastPoint);
             Assert.Equal(new ShxPoint(0.0, 5.0), lastPoint);
+            var arc = Assert.IsType<ShxArc>(path);
             Assert.Equal(new ShxPoint(0.0, 2.5), arc.Center);
             Assert.Equal(2.5, arc.Radius);
             Assert.Equal(-1.5707963267948966, arc.StartAngle);
             Assert.Equal(1.5707963267948966, arc.EndAngle);
+        }
+
+        [Fact]
+        public void FromArcWithZeroBulge()
+        {
+            // the spec states that a bulge of 0 indicates a straight line segment
+            var bulgeArc = new ShxGlyphCommandArc(2.0, 2.0, 0.0);
+            var lastPoint = new ShxPoint(1.0, 1.0);
+            var path = ShxCommandProcessorState.FromArcCommand(bulgeArc, ref lastPoint);
+            Assert.Equal(new ShxPoint(3.0, 3.0), lastPoint);
+            var line = Assert.IsType<ShxLine>(path);
+            Assert.Equal(new ShxPoint(1.0, 1.0), line.P1);
+            Assert.Equal(new ShxPoint(3.0, 3.0), line.P2);
         }
     }
 }

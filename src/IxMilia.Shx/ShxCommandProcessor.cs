@@ -95,10 +95,10 @@ namespace IxMilia.Shx
 
         public void ProcessArc(ShxGlyphCommandArc a)
         {
-            var arc = FromArcCommand(a, ref _lastPoint);
+            var glyphPath = FromArcCommand(a, ref _lastPoint);
             if (_isDrawing)
             {
-                Paths.Add(arc);
+                Paths.Add(glyphPath);
             }
         }
 
@@ -177,9 +177,20 @@ namespace IxMilia.Shx
             return arc;
         }
 
-        public static ShxArc FromArcCommand(ShxGlyphCommandArc a, ref ShxPoint lastPoint)
+        public static ShxGlyphPath FromArcCommand(ShxGlyphCommandArc a, ref ShxPoint lastPoint)
         {
             var offset = new ShxPoint(a.XDisplacement, a.YDisplacement);
+            if (a.Bulge == 0.0)
+            {
+                // according to the spec, a bulge of 0 is valid and means a straight line
+                // see code `00D` at https://help.autodesk.com/view/OARX/2020/ENU/?guid=GUID-06832147-16BE-4A66-A6D0-3ADF98DC8228
+                var lineStart = lastPoint;
+                var lineEnd = lineStart + offset;
+                lastPoint = lineEnd;
+                var linePath = new ShxLine(lineStart, lineEnd);
+                return linePath;
+            }
+
             var chordLength = offset.Length;
             var perpendicularHeight = Math.Abs(a.Bulge) * chordLength / 254.0;
             var isCounterClockwise = a.Bulge >= 0.0;

@@ -1,10 +1,21 @@
+using System.IO;
 using System.Linq;
 using Xunit;
 
 namespace IxMilia.Shx.Test
 {
-    public class ShpTests
+    public class ShpTests : TestBase
     {
+        [Theory]
+        [InlineData("ISO3098B.SHP")]
+        public void CompileAndLoadSampleFont(string fontName)
+        {
+            var fontPath = GetPathToSampleFile(fontName);
+            var shp = ShpFont.Parse(File.ReadAllText(fontPath));
+            var compiled = shp.Compile();
+            var shx = ShxFont.Load(compiled);
+        }
+
         [Fact]
         public void ParseBigFont()
         {
@@ -65,14 +76,26 @@ namespace IxMilia.Shx.Test
         }
 
         [Fact]
-        public void ParseMultiByteShape()
+        public void ParseMultiByteShapeAsOneToken()
         {
             var lines = new[]
             {
                 "*1,4,",
                 "7,020AC,0",
             };
-            var shape = ShpShapeDescription.Parse(lines, 0, out var _);
+            var shape = ShpShapeDescription.Parse(lines, 0, true, out var _);
+            Assert.Equal(new byte[] { 0x07, 0x20, 0xAC }, shape.Data);
+        }
+
+        [Fact]
+        public void ParseMultiByteShapeAsTwoTokens()
+        {
+            var lines = new[]
+            {
+                "*1,4,",
+                "7,020,0AC,0",
+            };
+            var shape = ShpShapeDescription.Parse(lines, 0, true, out var _);
             Assert.Equal(new byte[] { 0x07, 0x20, 0xAC }, shape.Data);
         }
 
@@ -84,7 +107,7 @@ namespace IxMilia.Shx.Test
                 "*1,4,",
                 "8,(1,2),0",
             };
-            var shape = ShpShapeDescription.Parse(lines, 0, out var _);
+            var shape = ShpShapeDescription.Parse(lines, 0, false, out var _);
             Assert.Equal(new byte[] { 0x08, 0x01, 0x02 }, shape.Data);
         }
 
@@ -96,7 +119,7 @@ namespace IxMilia.Shx.Test
                 "*0A,1,",
                 "0",
             };
-            var shape = ShpShapeDescription.Parse(lines, 0, out var _);
+            var shape = ShpShapeDescription.Parse(lines, 0, false, out var _);
             Assert.Equal(10, shape.ShapeNumber);
         }
 
@@ -106,10 +129,22 @@ namespace IxMilia.Shx.Test
             var lines = new[]
             {
                 "*1,4,",
-                "8,(-128,127),0",
+                "8,(-128,-5),0",
             };
-            var shape = ShpShapeDescription.Parse(lines, 0, out var _);
-            Assert.Equal(new byte[] { 0x08, 0x80, 0x7F }, shape.Data);
+            var shape = ShpShapeDescription.Parse(lines, 0, false, out var _);
+            Assert.Equal(new byte[] { 0x08, 0x80, 0xFB }, shape.Data);
+        }
+
+        [Fact]
+        public void ParseCode10NegativeValues()
+        {
+            var lines = new[]
+            {
+                "*1,4,",
+                "10,(2,-062),0", // the negative sign here sets the high bit
+            };
+            var shape = ShpShapeDescription.Parse(lines, 0, false, out var _);
+            Assert.Equal(new byte[] { 0x0A, 0x02, 0b1110_0010 }, shape.Data);
         }
 
         [Fact]

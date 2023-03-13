@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 
 namespace IxMilia.Shx
 {
@@ -179,11 +180,16 @@ namespace IxMilia.Shx
 
         public static ShxGlyphPath FromArcCommand(ShxGlyphCommandArc a, ref ShxPoint lastPoint)
         {
+            if (a.Bulge < -127.0 || a.Bulge > 127.0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(ShxGlyphCommandArc.Bulge), "Bulge must be in the range [-127, 127].");
+            }
+
             var offset = new ShxPoint(a.XDisplacement, a.YDisplacement);
             if (a.Bulge == 0.0)
             {
                 // according to the spec, a bulge of 0 is valid and means a straight line
-                // see code `00D` at https://help.autodesk.com/view/OARX/2020/ENU/?guid=GUID-06832147-16BE-4A66-A6D0-3ADF98DC8228
+                // see code `00C` at https://help.autodesk.com/view/OARX/2020/ENU/?guid=GUID-06832147-16BE-4A66-A6D0-3ADF98DC8228
                 var lineStart = lastPoint;
                 var lineEnd = lineStart + offset;
                 lastPoint = lineEnd;
@@ -193,15 +199,27 @@ namespace IxMilia.Shx
 
             var chordLength = offset.Length;
             var perpendicularHeight = Math.Abs(a.Bulge) * chordLength / 254.0;
+            if (perpendicularHeight > chordLength / 2.0)
+            {
+                throw new InvalidOperationException("Arc is too big");
+            }
+
             var isCounterClockwise = a.Bulge >= 0.0;
-            var perpendicularVector = offset.Perpendicular.Normalized * perpendicularHeight;
+            var perpendicularVector = offset.Perpendicular;
+            if (!isCounterClockwise)
+            {
+                perpendicularVector *= -1.0;
+            }
+
+            var normalizedPerpendicularVector = perpendicularVector.Normalized * perpendicularHeight;
+
             var startPoint = lastPoint;
-            var midPoint = startPoint + offset.MidPoint + perpendicularVector;
+            var midPoint = startPoint + offset.MidPoint + normalizedPerpendicularVector;
             var endPoint = startPoint + offset;
             lastPoint = endPoint;
 
             var radius = (perpendicularHeight / 2.0) + (chordLength * chordLength / (8.0 * perpendicularHeight));
-            var center = midPoint - (perpendicularVector.Normalized * radius);
+            var center = midPoint - (normalizedPerpendicularVector.Normalized * radius);
             var arcAngle = 2.0 * Math.Asin(chordLength / (2.0 * radius));
             if (!isCounterClockwise)
             {
@@ -214,6 +232,32 @@ namespace IxMilia.Shx
             var startAngle = Math.Atan2(startPointVector.Y, startPointVector.X);
             var endPointVector = endPoint - center;
             var endAngle = Math.Atan2(endPointVector.Y, endPointVector.X);
+
+            var fullCircle = Math.PI * 2.0;
+            while (endAngle < startAngle)
+            {
+                endAngle += fullCircle;
+            }
+
+            while (startAngle < 0.0)
+            {
+                startAngle += fullCircle;
+                endAngle += fullCircle;
+            }
+
+            var actualAngle = endAngle - startAngle;
+            var angleDiff = Math.Abs(actualAngle - arcAngle);
+            if (angleDiff >= 1.0E-6)
+            {
+                throw new InvalidOperationException("Calculated and actual angles don't match.");
+            }
+
+            var angleCircleDiff = actualAngle - fullCircle / 2.0;
+            var isTooBig = angleCircleDiff > 1.0E-6;
+            if (isTooBig)
+            {
+                throw new InvalidOperationException("Angle cannot be larger than half of a circle.");
+            }
 
             var arc = new ShxArc(center, radius, startAngle, endAngle);
             return arc;

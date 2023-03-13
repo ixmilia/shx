@@ -20,7 +20,7 @@ namespace IxMilia.Shx
 
         public ShxPoint Normalized => this / Length;
 
-        public ShxPoint Perpendicular => new ShxPoint(-Y, X);
+        public ShxPoint Perpendicular => new ShxPoint(Y, -X);
 
         public ShxPoint MidPoint => this * 0.5;
 

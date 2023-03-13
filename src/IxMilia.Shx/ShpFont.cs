@@ -133,9 +133,10 @@ namespace IxMilia.Shx
             var font = new ShpFont();
             var lines = content.Split('\n').Where(l => !string.IsNullOrEmpty(l) && l[0] != ';').Select(l => l.Trim()).ToArray();
             var startingLine = 0;
+            var isUnifont = false;
             while (startingLine < lines.Length)
             {
-                var shape = ShpShapeDescription.Parse(lines, startingLine, out var nextLine);
+                var shape = ShpShapeDescription.Parse(lines, startingLine, isUnifont, out var nextLine);
                 if (shape.ShapeNumber == 0)
                 {
                     font.Name = shape.Name;
@@ -151,6 +152,7 @@ namespace IxMilia.Shx
                             break;
                         case 6:
                             // unifont
+                            isUnifont = true;
                             font.FontEncoding = (ShxFontEncoding)shape.Data[3];
                             font.EmbeddingType = (ShxFontEmbeddingType)shape.Data[4];
                             break;

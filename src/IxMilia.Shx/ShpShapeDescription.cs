@@ -40,7 +40,7 @@ namespace IxMilia.Shx
             return $"*{ShapeNumber},{Data.Length + 1},{Name}\n{string.Join(",",Data.Select(b => "0" + $"{b:X}".PadLeft(2, '0')))},0";
         }
 
-        internal static ShpShapeDescription Parse(string[] lines, int startingLine, out int nextLine)
+        internal static ShpShapeDescription Parse(string[] lines, int startingLine, bool isUnifont, out int nextLine)
         {
             var parts = lines[startingLine].Split(new[] { ',' }, 3);
             if (parts[0][0] != '*')
@@ -97,20 +97,35 @@ namespace IxMilia.Shx
                         part = part.Substring(0, part.Length - 1);
                     }
 
+                    var isNegative = part[0] == '-';
+                    if (isNegative)
+                    {
+                        part = part.Substring(1);
+                    }
+
                     if (part[0] == '0' && part.Length > 1)
                     {
                         // hex encoded
                         for (int j = 1; j < part.Length; j += 2)
                         {
-                            data.Add(byte.Parse(part.Substring(j, 2), NumberStyles.HexNumber));
+                            var raw = byte.Parse(part.Substring(j, 2), NumberStyles.HexNumber);
+                            if (isNegative)
+                            {
+                                raw |= 0b10000000;
+                            }
+
+                            data.Add(raw);
                         }
                     }
                     else
                     {
-                        // decimal encoded; values are [-128, 127] so must be parsed as a short
-                        var raw = short.Parse(part);
-                        var asByte = (byte)raw;
-                        data.Add(asByte);
+                        var raw = byte.Parse(part);
+                        if (isNegative)
+                        {
+                            raw = (byte)(raw * -1);
+                        }
+
+                        data.Add(raw);
                     }
                 }
             }

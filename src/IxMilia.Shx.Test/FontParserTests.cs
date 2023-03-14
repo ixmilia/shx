@@ -2,8 +2,17 @@
 
 namespace IxMilia.Shx.Test
 {
-    public class FontParserTests
+    public class FontParserTests : TestBase
     {
+        [Theory]
+        [InlineData("ISO3098B.SHX", 115)]
+        public void LoadSampleFont(string fileName, int expectedGlyphCount)
+        {
+            var fontPath = GetPathToSampleFile(fileName);
+            var shx = ShxFont.Load(fontPath);
+            Assert.Equal(expectedGlyphCount, shx.Glyphs.Count);
+        }
+
         [Fact]
         public void ParseUniFontInfo()
         {

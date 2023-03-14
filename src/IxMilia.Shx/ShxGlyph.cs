@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace IxMilia.Shx
 {
@@ -39,7 +38,7 @@ namespace IxMilia.Shx
             Height = height;
         }
 
-        internal static List<ShxGlyphCommand> ParseCommands(ByteReader reader, ShxFontEncoding fontEncoding, bool isBigFont)
+        internal static List<ShxGlyphCommand> ParseCommands(ByteReader reader, ShxFontEncoding fontEncoding, ShxFontType fontType)
         {
             var commands = new List<ShxGlyphCommand>();
             while (reader.TryReadByte(out var command) && command != 0)
@@ -84,45 +83,58 @@ namespace IxMilia.Shx
                             break;
                         case 7:
                             {
-                                if (isBigFont)
+                                switch (fontType)
                                 {
-                                    // https://help.autodesk.com/view/ACD/2020/ENU/?guid=GUID-00ED0CC6-A4BE-4591-93FA-598CC40AA43D
-                                    if (reader.TryReadByte(out var replayCode))
-                                    {
-                                        if (replayCode == 0 &&
-                                            reader.TryReadSByte(out var xoffset) &&
-                                            reader.TryReadSByte(out var yoffset) &&
-                                            reader.TryReadByte(out var width) &&
-                                            reader.TryReadByte(out var height))
+                                    case ShxFontType.ShapeFile:
                                         {
-                                            commands.Add(new ShxGlyphCommandReplayCharacter(replayCode, xoffset, yoffset, width, height));
+                                            if (reader.TryReadByte(out var replayCode))
+                                            {
+                                                commands.Add(new ShxGlyphCommandReplayCharacter(replayCode));
+                                            }
                                         }
-                                    }
-                                    else
-                                    {
-                                        // sometimes it's not zero?
-                                        reader.TryReadByte(out var lowerByte);
-                                        var fullCode = (ushort)((replayCode << 8) | lowerByte);
-                                        commands.Add(new ShxGlyphCommandReplayCharacter(fullCode));
-                                    }
-                                }
-                                else
-                                {
-                                    // replay the given character code
-                                    if (fontEncoding == ShxFontEncoding.Unicode)
-                                    {
-                                        if (reader.TryReadUInt16BigEndian(out var replayCode))
+                                        break;
+                                    case ShxFontType.BigFont:
                                         {
-                                            commands.Add(new ShxGlyphCommandReplayCharacter(replayCode));
+                                            // https://help.autodesk.com/view/ACD/2020/ENU/?guid=GUID-00ED0CC6-A4BE-4591-93FA-598CC40AA43D
+                                            if (reader.TryReadByte(out var replayCode))
+                                            {
+                                                if (replayCode == 0 &&
+                                                    reader.TryReadSByte(out var xoffset) &&
+                                                    reader.TryReadSByte(out var yoffset) &&
+                                                    reader.TryReadByte(out var width) &&
+                                                    reader.TryReadByte(out var height))
+                                                {
+                                                    commands.Add(new ShxGlyphCommandReplayCharacter(replayCode, xoffset, yoffset, width, height));
+                                                }
+                                            }
+                                            else
+                                            {
+                                                // sometimes it's not zero?
+                                                reader.TryReadByte(out var lowerByte);
+                                                var fullCode = (ushort)((replayCode << 8) | lowerByte);
+                                                commands.Add(new ShxGlyphCommandReplayCharacter(fullCode));
+                                            }
                                         }
-                                    }
-                                    else
-                                    {
-                                        if (reader.TryReadByte(out var replayCode))
+                                        break;
+                                    case ShxFontType.UniFont:
                                         {
-                                            commands.Add(new ShxGlyphCommandReplayCharacter(replayCode));
+                                            // replay the given character code
+                                            if (fontEncoding == ShxFontEncoding.Unicode)
+                                            {
+                                                if (reader.TryReadUInt16BigEndian(out var replayCode))
+                                                {
+                                                    commands.Add(new ShxGlyphCommandReplayCharacter(replayCode));
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (reader.TryReadByte(out var replayCode))
+                                                {
+                                                    commands.Add(new ShxGlyphCommandReplayCharacter(replayCode));
+                                                }
+                                            }
                                         }
-                                    }
+                                        break;
                                 }
                             }
                             break;

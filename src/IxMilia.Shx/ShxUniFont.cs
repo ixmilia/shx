@@ -5,6 +5,8 @@ namespace IxMilia.Shx
 {
     public class ShxUniFont : ShxFont
     {
+        public override ShxFontType FontType => ShxFontType.UniFont;
+        
         public ShxUniFont()
             : base()
         {
@@ -56,7 +58,7 @@ namespace IxMilia.Shx
                                 glyphName = character.ToString();
                             }
 
-                            var glyphCommands = ShxGlyph.ParseCommands(reader, FontEncoding, isBigFont: false);
+                            var glyphCommands = ShxGlyph.ParseCommands(reader, FontEncoding, FontType);
                             commandData.AddGlyphCommands(characterCode, glyphName, glyphCommands);
                         }
 

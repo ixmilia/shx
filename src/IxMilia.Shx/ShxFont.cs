@@ -24,9 +24,18 @@ namespace IxMilia.Shx
         ReadOnlyEmbeddable = 2,
     }
 
+    public enum ShxFontType
+    {
+        ShapeFile,
+        BigFont,
+        UniFont
+    }
+
     public abstract class ShxFont
     {
         Dictionary<ushort, ShxGlyph> _glyphs = new Dictionary<ushort, ShxGlyph>();
+
+        public abstract ShxFontType FontType { get; }
 
         public IReadOnlyDictionary<ushort, ShxGlyph> Glyphs => _glyphs;
         public string FileIdentifier { get; private set; }
@@ -73,6 +82,10 @@ namespace IxMilia.Shx
             else if (fileIdentifier.Contains("bigfont"))
             {
                 font = new ShxBigFont();
+            }
+            else if (fileIdentifier.Contains("shapes"))
+            {
+                font = new ShxShapeFont();
             }
 
             if (font == null)

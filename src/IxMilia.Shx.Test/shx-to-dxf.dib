@@ -1,3 +1,7 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp","aliases":[]}]}}
+
 #!csharp
 
 #r "..\..\artifacts\bin\IxMilia.Shx\Debug\netstandard1.3\IxMilia.Shx.dll"
@@ -22,9 +26,40 @@ var dxfPath = @"TODO: set me";
 var basePoint = DxfPoint.Origin;
 var shx = ShxFont.Load(shxPath);
 var dxf = new DxfFile();
+var glyphLayer = new DxfLayer("glyph");
+dxf.Layers.Add(glyphLayer);
+var gridLayer = new DxfLayer("grid")
+{
+    Color = DxfColor.FromIndex(4)
+};
+dxf.Layers.Add(gridLayer);
+var textLayer = new DxfLayer("text")
+{
+    Color = DxfColor.FromIndex(2)
+};
+dxf.Layers.Add(textLayer);
 foreach (var kvp in shx.Glyphs)
 {
     var glyph = kvp.Value;
+
+    // add real text below it
+    dxf.Entities.Add(new DxfText(basePoint + new DxfVector(0.0, -glyph.Height, 0.0), glyph.Height / 2.0, ((char)kvp.Key).ToString()) { Color = DxfColor.ByLayer, Layer = textLayer.Name });
+
+    // draw grid
+    // for (var row = 0; row < shx.UpperCaseBaselineOffset; row++)
+    // {
+    //     var p1 = new DxfPoint(0.0, row, 0.0);
+    //     var p2 = new DxfPoint(glyph.Width, row, 0.0);
+    //     dxf.Entities.Add(new DxfLine(p1 + basePoint, p2 + basePoint) { Color = DxfColor.ByLayer, Layer = gridLayer.Name });
+    // }
+    // for (var col = 0; col < glyph.Width; col++)
+    // {
+    //     var p1 = new DxfPoint(col, 0.0, 0.0);
+    //     var p2 = new DxfPoint(col, shx.UpperCaseBaselineOffset, 0.0);
+    //     dxf.Entities.Add(new DxfLine(p1 + basePoint, p2 + basePoint) { Color = DxfColor.ByLayer, Layer = gridLayer.Name });
+    // }
+
+    // add glyph
     foreach (var path in glyph.Paths)
     {
         switch (path)
@@ -32,11 +67,11 @@ foreach (var kvp in shx.Glyphs)
             case ShxLine line:
                 var p1 = new DxfPoint(line.P1.X, line.P1.Y, 0.0);
                 var p2 = new DxfPoint(line.P2.X, line.P2.Y, 0.0);
-                dxf.Entities.Add(new DxfLine(p1 + basePoint, p2 + basePoint));
+                dxf.Entities.Add(new DxfLine(p1 + basePoint, p2 + basePoint) { Color = DxfColor.ByLayer, Layer = glyphLayer.Name });
                 break;
             case ShxArc arc:
                 var center = new DxfPoint(arc.Center.X, arc.Center.Y, 0.0);
-                dxf.Entities.Add(new DxfArc(center + basePoint, arc.Radius, arc.StartAngle * 180.0 / Math.PI, arc.EndAngle * 180.0 / Math.PI));
+                dxf.Entities.Add(new DxfArc(center + basePoint, arc.Radius, arc.StartAngle * 180.0 / Math.PI, arc.EndAngle * 180.0 / Math.PI) { Color = DxfColor.ByLayer, Layer = glyphLayer.Name });
                 break;
         }
     }

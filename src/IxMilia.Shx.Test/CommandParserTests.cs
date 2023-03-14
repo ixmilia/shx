@@ -9,7 +9,7 @@ namespace IxMilia.Shx.Test
         private List<ShxGlyphCommand> ParseCommands(byte[] data, ShxFontEncoding encoding = ShxFontEncoding.Unicode)
         {
             var reader = new ByteReader(data);
-            var commands = ShxGlyph.ParseCommands(reader, encoding, isBigFont: false);
+            var commands = ShxGlyph.ParseCommands(reader, encoding, ShxFontType.UniFont);
             return commands;
         }
 

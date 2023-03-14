@@ -6,6 +6,8 @@ namespace IxMilia.Shx
 {
     public class ShxBigFont : ShxFont
     {
+        public override ShxFontType FontType => ShxFontType.BigFont;
+
         internal void TryReadFontData(ByteReader reader, int totalBytesToRead)
         {
             var startOffset = reader.Offset;
@@ -81,7 +83,7 @@ namespace IxMilia.Shx
                     else
                     {
                         var glyphName = characterReader.ReadNullTerminatedString();
-                        var glyphCommands = ShxGlyph.ParseCommands(characterReader, FontEncoding, isBigFont: true);
+                        var glyphCommands = ShxGlyph.ParseCommands(characterReader, FontEncoding, FontType);
                         commandData.AddGlyphCommands(characterCode, glyphName, glyphCommands);
                     }
 

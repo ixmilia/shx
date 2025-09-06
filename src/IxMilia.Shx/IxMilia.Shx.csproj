@@ -5,7 +5,7 @@
     <Copyright>Copyright 2021</Copyright>
     <AssemblyTitle>IxMilia.Shx</AssemblyTitle>
     <Authors>IxMilia</Authors>
-    <TargetFramework>netstandard1.3</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>IxMilia.Shx</AssemblyName>
     <PackageId>IxMilia.Shx</PackageId>
     <PackageTags>SHX</PackageTags>

@@ -131,7 +131,7 @@ namespace IxMilia.Shx
         public static ShpFont Parse(string content)
         {
             var font = new ShpFont();
-            var lines = content.Split('\n').Where(l => !string.IsNullOrEmpty(l) && l[0] != ';').Select(l => l.Trim()).ToArray();
+            var lines = content.Replace("\r", string.Empty).Split('\n').Where(l => !string.IsNullOrEmpty(l) && l[0] != ';').Select(l => l.Trim()).ToArray();
             var startingLine = 0;
             var isUnifont = false;
             while (startingLine < lines.Length)
